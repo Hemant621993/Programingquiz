@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Results | {{ technology }} Quiz</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body data-bs-theme="dark">
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-10 mx-auto">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h2 class="text-center mb-0">{{ technology }} Quiz Results</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="display-4">
+                                {{ total_score }} / {{ max_score }}
+                            </div>
+                            <p class="lead">
+                                {% if total_score == max_score %}
+                                    Excellent work! Perfect score!
+                                {% elif total_score >= max_score * 0.8 %}
+                                    Great job! You've demonstrated strong knowledge.
+                                {% elif total_score >= max_score * 0.6 %}
+                                    Good effort! You're on the right track.
+                                {% elif total_score >= max_score * 0.4 %}
+                                    Fair performance. Keep practicing!
+                                {% else %}
+                                    You might need more practice with {{ technology }}. Don't give up!
+                                {% endif %}
+                            </p>
+                        </div>
+
+                        <h4 class="mb-3">Individual Questions</h4>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Question</th>
+                                        <th>Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for question in questions %}
+                                        <tr>
+                                            <td>{{ question.title }}</td>
+                                            <td>
+                                                {% if scores[question.id|string] is defined %}
+                                                    {{ scores[question.id|string] }}/10
+                                                {% else %}
+                                                    Not attempted
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                            <a href="{{ url_for('quiz_by_language', language=language) }}" class="btn btn-outline-secondary me-2">
+                                <i class="bi bi-arrow-left me-2"></i>Back to Questions
+                            </a>
+                            <a href="/" class="btn btn-primary">
+                                <i class="bi bi-arrow-counterclockwise me-2"></i>Start Again
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-footer text-center text-muted">
+                        Thank you for completing the {{ technology }} programming quiz!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

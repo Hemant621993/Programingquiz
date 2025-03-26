@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ question.title }} | {{ technology }} Quiz</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+</head>
+<body data-bs-theme="dark">
+    <div class="container-fluid mt-3">
+        <div class="row">
+            <div class="col-12">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Home</a></li>
+                        <li class="breadcrumb-item"><a href="{{ url_for('quiz_by_language', language=language) }}">{{ technology }} Quiz</a></li>
+                        <li class="breadcrumb-item active">{{ question.title }}</li>
+                    </ol>
+                </nav>
+                <h2>{{ question.title }}</h2>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <p class="card-text">{{ question.description }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Left panel: Code editor -->
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ technology }} Code Editor</h5>
+                        <button id="run-btn" class="btn btn-primary btn-sm">
+                            <i class="bi bi-play-fill"></i> Run Code
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="editor" class="mb-3"></div>
+                        <div>
+                            <h6 class="mb-2">Input (optional):</h6>
+                            <textarea id="stdin" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right panel: Output and webcam -->
+            <div class="col-md-5">
+                <!-- Output panel -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Evaluation Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="status" class="alert alert-secondary">
+                            Run your code to see results
+                        </div>
+                        <div id="output-container">
+                            <h6>Feedback:</h6>
+                            <div id="output" class="border rounded p-3 bg-dark text-light mb-3" style="min-height: 150px; overflow-y: auto;"></div>
+                            <div id="suggestions-container" class="d-none">
+                                <h6>Suggestions for improvement:</h6>
+                                <div id="suggestions" class="border rounded p-3 bg-dark text-light" style="min-height: 100px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Webcam panel -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Proctoring Monitor</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <video id="webcam" class="img-fluid rounded mb-3" autoplay playsinline></video>
+                        <div class="d-grid">
+                            <button id="capture-btn" class="btn btn-outline-secondary">
+                                <i class="bi bi-camera-fill"></i> Capture Image
+                            </button>
+                        </div>
+                        <div id="detection-result" class="mt-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('quiz_by_language', language=language) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Questions
+                    </a>
+                    <a href="{{ url_for('show_result', language=language) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-card-checklist"></i> View Results
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Ace editor
+        const editor = ace.edit("editor");
+        editor.setTheme("ace/theme/monokai");
+        
+        // Set mode based on technology
+        const technology = "{{ technology }}".toLowerCase();
+        let editorMode = "ace/mode/python";
+        
+        if (technology === "c++" || technology === "cpp") {
+            editorMode = "ace/mode/c_cpp";
+        } else if (technology === "c") {
+            editorMode = "ace/mode/c_cpp";
+        } else if (technology === "java") {
+            editorMode = "ace/mode/java";
+        } else if (technology === "javascript" || technology === "js") {
+            editorMode = "ace/mode/javascript";
+        }
+        
+        editor.session.setMode(editorMode);
+        editor.setValue({{ question.starter_code | tojson | safe }}, 1);
+
+        // Webcam setup
+        const video = document.getElementById('webcam');
+        const captureBtn = document.getElementById('capture-btn');
+        const detectionResult = document.getElementById('detection-result');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing webcam:", err);
+                detectionResult.innerHTML = `<div class="alert alert-warning">Could not access webcam: ${err.message}</div>`;
+            });
+
+        captureBtn.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            if (canvas.width > 0 && canvas.height > 0) {
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const imageData = canvas.toDataURL('image/png');
+
+                fetch('{{ url_for("upload_webcam") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageData })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.suspicious) {
+                        detectionResult.innerHTML = `<div class="alert alert-danger">⚠️ Suspicious activity detected!</div>`;
+                    } else {
+                        detectionResult.innerHTML = `<div class="alert alert-success">✅ No suspicious activity detected</div>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    detectionResult.innerHTML = `<div class="alert alert-danger">Error processing image: ${error.message}</div>`;
+                });
+            } else {
+                detectionResult.innerHTML = `<div class="alert alert-warning">Webcam not initialized properly</div>`;
+            }
+        });
+
+        // Automatic webcam capture every 30 seconds
+        setInterval(() => {
+            if (video.readyState === 4) { // HAVE_ENOUGH_DATA state
+                captureBtn.click();
+            }
+        }, 30000);
+
+        // Code submission
+        document.getElementById('run-btn').addEventListener('click', executeCode);
+
+        async function executeCode() {
+            const code = editor.getValue();
+            const stdin = document.getElementById('stdin').value;
+            const outputDiv = document.getElementById('output');
+            const statusDiv = document.getElementById('status');
+            const suggestionsDiv = document.getElementById('suggestions');
+            const suggestionsContainer = document.getElementById('suggestions-container');
+
+            statusDiv.className = "alert alert-info";
+            statusDiv.innerHTML = "Evaluating your code...";
+            outputDiv.innerHTML = "Please wait while we analyze your submission...";
+            suggestionsContainer.classList.add("d-none");
+
+            try {
+                const response = await fetch('{{ url_for("submit_code", language=language) }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code,
+                        stdin: stdin,
+                        question_id: {{ question.id }}
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    outputDiv.innerHTML = data.error;
+                    statusDiv.innerHTML = "Error";
+                    statusDiv.className = "alert alert-danger";
+                    return;
+                }
+
+                outputDiv.innerHTML = data.feedback || "(No feedback)";
+                
+                if (data.suggestions) {
+                    suggestionsDiv.innerHTML = data.suggestions;
+                    suggestionsContainer.classList.remove("d-none");
+                } else {
+                    suggestionsContainer.classList.add("d-none");
+                }
+
+                statusDiv.innerHTML = `Status: ${data.status} | Score: ${data.score}/10`;
+                statusDiv.className = `alert ${data.correct ? 'alert-success' : 'alert-warning'}`;
+            } catch (error) {
+                outputDiv.innerHTML = "Failed to execute code: " + error.message;
+                statusDiv.innerHTML = "Error";
+                statusDiv.className = "alert alert-danger";
+            }
+        }
+    </script>
+</body>
+</html>
