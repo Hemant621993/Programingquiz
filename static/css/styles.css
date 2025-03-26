@@ -61,3 +61,35 @@ textarea.form-control {
     background-color: rgba(0,0,0,0.2);
     color: var(--bs-light);
 }
+
+/* Timer styles */
+.timer-container {
+    min-width: 120px;
+}
+
+.timer-container .card {
+    border: 1px solid var(--bs-border-color);
+    transition: all 0.3s ease;
+}
+
+#timer-display {
+    font-family: monospace;
+    font-size: 1.5rem;
+    font-weight: 500;
+    transition: color 0.3s ease, font-weight 0.3s ease;
+}
+
+.timer-low {
+    animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+    0% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% { 
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}

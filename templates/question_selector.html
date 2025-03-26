@@ -21,13 +21,34 @@
                             Select a coding challenge to start. Your webcam will be used for proctoring purposes.
                         </div>
 
-                        <h3 class="mb-4">Select a Coding Challenge</h3>
+                        <div class="mb-4">
+                            <h3 class="mb-3">Select a Coding Challenge</h3>
+                            
+                            <!-- Difficulty filter -->
+                            <div class="d-flex align-items-center mb-3">
+                                <label class="me-2">Filter by difficulty:</label>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('quiz_by_language', language=request.view_args.language) }}" 
+                                       class="btn btn-sm {{ 'btn-primary' if not difficulty else 'btn-outline-primary' }}">All</a>
+                                    <a href="{{ url_for('quiz_by_language', language=request.view_args.language, difficulty='easy') }}" 
+                                       class="btn btn-sm {{ 'btn-success' if difficulty == 'easy' else 'btn-outline-success' }}">Easy</a>
+                                    <a href="{{ url_for('quiz_by_language', language=request.view_args.language, difficulty='medium') }}" 
+                                       class="btn btn-sm {{ 'btn-warning' if difficulty == 'medium' else 'btn-outline-warning' }}">Medium</a>
+                                    <a href="{{ url_for('quiz_by_language', language=request.view_args.language, difficulty='hard') }}" 
+                                       class="btn btn-sm {{ 'btn-danger' if difficulty == 'hard' else 'btn-outline-danger' }}">Hard</a>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="list-group">
                             {% for q in questions %}
-                                <a href="{{ url_for('show_editor', language=request.view_args.language, question_id=q.id) }}" class="list-group-item list-group-item-action">
+                                <a href="{{ url_for('show_editor', language=request.view_args.language, question_id=q.id) }}{{ '?difficulty=' + difficulty if difficulty }}" 
+                                   class="list-group-item list-group-item-action">
                                     <div class="d-flex w-100 justify-content-between">
                                         <h5 class="mb-1">{{ q.title }}</h5>
-                                        <small>Difficulty: {{ "Easy" if q.id == 1 else "Medium" if q.id == 2 else "Hard" }}</small>
+                                        <span class="badge {{ 'bg-success' if q.difficulty == 'easy' else 'bg-warning' if q.difficulty == 'medium' else 'bg-danger' }}">
+                                            {{ q.difficulty|capitalize }}
+                                        </span>
                                     </div>
                                     <p class="mb-1">{{ q.description|truncate(100) }}</p>
                                 </a>

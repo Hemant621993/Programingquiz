@@ -19,10 +19,26 @@
                         <li class="breadcrumb-item active">{{ question.title }}</li>
                     </ol>
                 </nav>
-                <h2>{{ question.title }}</h2>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h2>{{ question.title }}</h2>
+                    <div class="timer-container">
+                        <div class="card bg-dark">
+                            <div class="card-body p-2 text-center">
+                                <h5 class="mb-0" id="timer-display">Loading timer...</h5>
+                                <small class="text-muted">Time Remaining</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="card mb-3">
                     <div class="card-body">
                         <p class="card-text">{{ question.description }}</p>
+                        <div class="badge bg-{{ 'success' if question.difficulty == 'easy' else 'warning' if question.difficulty == 'medium' else 'danger' }}">
+                            Difficulty: {{ question.difficulty|capitalize }}
+                        </div>
+                        <div class="badge bg-info ms-2">
+                            Time Limit: {{ question.time_limit_minutes }} minutes
+                        </div>
                     </div>
                 </div>
             </div>
@@ -50,7 +66,25 @@
 
             <!-- Right panel: Output and webcam -->
             <div class="col-md-5">
-                <!-- Output panel -->
+                <!-- Code Test Output Panel -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Code Test Results</h5>
+                        <button id="test-btn" class="btn btn-secondary btn-sm">
+                            <i class="bi bi-play-fill"></i> Test Code
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="test-status" class="alert alert-secondary">
+                            Click "Test Code" to see your code's output
+                        </div>
+                        <div id="test-output-container">
+                            <div id="test-output" class="border rounded p-3 bg-dark text-light mb-3" style="min-height: 100px; max-height: 150px; overflow-y: auto; font-family: monospace;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Evaluation Results panel -->
                 <div class="card mb-3">
                     <div class="card-header">
                         <h5 class="mb-0">Evaluation Results</h5>
@@ -83,6 +117,7 @@
                             </button>
                         </div>
                         <div id="detection-result" class="mt-2"></div>
+                        <div id="detection-details" class="text-start mt-2 small d-none"></div>
                     </div>
                 </div>
             </div>
@@ -123,6 +158,99 @@
         
         editor.session.setMode(editorMode);
         editor.setValue({{ question.starter_code | tojson | safe }}, 1);
+        
+        // Timer functionality
+        const timerDisplay = document.getElementById('timer-display');
+        const timeLimitMinutes = {{ question.time_limit_minutes }};
+        let timeRemainingSeconds = timeLimitMinutes * 60;
+        let timerId = null;
+        
+        // Load timer state from sessionStorage
+        const questionKey = `question_${technology}_{{ question.id }}_timer`;
+        const savedTime = sessionStorage.getItem(questionKey);
+        const startTime = sessionStorage.getItem(`${questionKey}_start`);
+        
+        // Initialize timer either from saved state or fresh
+        function initializeTimer() {
+            if (savedTime && startTime) {
+                // Calculate elapsed time since the timer was last active
+                const now = new Date().getTime();
+                const elapsedSeconds = Math.floor((now - parseInt(startTime)) / 1000);
+                timeRemainingSeconds = Math.max(0, parseInt(savedTime) - elapsedSeconds);
+            }
+            
+            // Start the timer
+            startTimer();
+            
+            // Save initial state if not already saved
+            if (!startTime) {
+                sessionStorage.setItem(`${questionKey}_start`, new Date().getTime().toString());
+            }
+        }
+        
+        function startTimer() {
+            // Clear any existing timer
+            if (timerId) {
+                clearInterval(timerId);
+            }
+            
+            // Update timer display immediately
+            updateTimerDisplay();
+            
+            // Set up interval to update timer every second
+            timerId = setInterval(() => {
+                timeRemainingSeconds--;
+                updateTimerDisplay();
+                
+                // Save current time remaining
+                sessionStorage.setItem(questionKey, timeRemainingSeconds.toString());
+                
+                // Handle timer expiration
+                if (timeRemainingSeconds <= 0) {
+                    clearInterval(timerId);
+                    handleTimerExpired();
+                }
+            }, 1000);
+        }
+        
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemainingSeconds / 60);
+            const seconds = timeRemainingSeconds % 60;
+            
+            // Format display with leading zeros
+            const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            timerDisplay.textContent = formattedTime;
+            
+            // Change color and animation based on time remaining
+            if (timeRemainingSeconds <= 60) { // Last minute
+                timerDisplay.style.color = 'red';
+                timerDisplay.style.fontWeight = 'bold';
+                timerDisplay.parentElement.classList.add('timer-low');
+            } else if (timeRemainingSeconds <= 300) { // Last 5 minutes
+                timerDisplay.style.color = 'orange';
+                timerDisplay.style.fontWeight = 'bold';
+                timerDisplay.parentElement.classList.remove('timer-low');
+            } else {
+                timerDisplay.style.color = '';
+                timerDisplay.style.fontWeight = '';
+                timerDisplay.parentElement.classList.remove('timer-low');
+            }
+        }
+        
+        function handleTimerExpired() {
+            timerDisplay.textContent = '00:00';
+            timerDisplay.style.color = 'red';
+            timerDisplay.style.fontWeight = 'bold';
+            
+            // Show alert
+            alert('Time is up! Your solution will be submitted automatically.');
+            
+            // Auto-submit the code
+            executeCode();
+        }
+        
+        // Initialize timer when page loads
+        initializeTimer();
 
         // Webcam setup
         const video = document.getElementById('webcam');
@@ -142,6 +270,7 @@
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
+            const detectionDetails = document.getElementById('detection-details');
             
             if (canvas.width > 0 && canvas.height > 0) {
                 canvas.getContext('2d').drawImage(video, 0, 0);
@@ -155,17 +284,40 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.suspicious) {
-                        detectionResult.innerHTML = `<div class="alert alert-danger">⚠️ Suspicious activity detected!</div>`;
+                        detectionResult.innerHTML = `<div class="alert alert-danger">⚠️ ${data.message}</div>`;
+                        detectionDetails.classList.remove('d-none');
+                        
+                        // Display detected objects if any
+                        let detailsHtml = `<strong>Reason:</strong> ${data.reason}`;
+                        if (data.detected_objects && data.detected_objects.length > 0) {
+                            detailsHtml += `<br><strong>Detected objects:</strong> ${data.detected_objects.join(', ')}`;
+                        }
+                        detectionDetails.innerHTML = detailsHtml;
                     } else {
-                        detectionResult.innerHTML = `<div class="alert alert-success">✅ No suspicious activity detected</div>`;
+                        let alertClass = "alert-success";
+                        let icon = "✅";
+                        let message = data.message;
+                        
+                        if (data.person_detected) {
+                            detectionResult.innerHTML = `<div class="alert alert-success">${icon} ${message}</div>`;
+                            
+                            // Show minimal details for successful detection
+                            detectionDetails.classList.remove('d-none');
+                            detectionDetails.innerHTML = `<strong>Status:</strong> Person detected (count: ${data.person_count})`;
+                        } else {
+                            detectionResult.innerHTML = `<div class="alert alert-success">${icon} No suspicious activity detected</div>`;
+                            detectionDetails.classList.add('d-none');
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     detectionResult.innerHTML = `<div class="alert alert-danger">Error processing image: ${error.message}</div>`;
+                    detectionDetails.classList.add('d-none');
                 });
             } else {
                 detectionResult.innerHTML = `<div class="alert alert-warning">Webcam not initialized properly</div>`;
+                detectionDetails.classList.add('d-none');
             }
         });
 
@@ -175,8 +327,59 @@
                 captureBtn.click();
             }
         }, 30000);
+        
+        // Code testing functionality
+        document.getElementById('test-btn').addEventListener('click', testCode);
+        
+        async function testCode() {
+            const code = editor.getValue();
+            const stdin = document.getElementById('stdin').value;
+            const testOutputDiv = document.getElementById('test-output');
+            const testStatusDiv = document.getElementById('test-status');
+            
+            testStatusDiv.className = "alert alert-info";
+            testStatusDiv.innerHTML = "Running your code...";
+            testOutputDiv.innerHTML = "Executing...";
+            
+            try {
+                const response = await fetch('{{ url_for("test_code", language=language) }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code,
+                        stdin: stdin,
+                        language: "{{ technology }}"
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    testOutputDiv.innerHTML = `<span class="text-danger">${data.error}</span>`;
+                    testStatusDiv.innerHTML = "Error running code";
+                    testStatusDiv.className = "alert alert-danger";
+                    return;
+                }
+                
+                // Format the output with proper line breaks
+                const formattedOutput = data.output.replace(/\n/g, '<br>');
+                testOutputDiv.innerHTML = formattedOutput || "<em>No output</em>";
+                
+                testStatusDiv.innerHTML = data.success 
+                    ? "Code executed successfully" 
+                    : "Execution completed with errors";
+                testStatusDiv.className = data.success 
+                    ? "alert alert-success" 
+                    : "alert alert-warning";
+                
+            } catch (error) {
+                testOutputDiv.innerHTML = `<span class="text-danger">Failed to run code: ${error.message}</span>`;
+                testStatusDiv.innerHTML = "Server error";
+                testStatusDiv.className = "alert alert-danger";
+            }
+        }
 
-        // Code submission
+        // Code submission for evaluation
         document.getElementById('run-btn').addEventListener('click', executeCode);
 
         async function executeCode() {
