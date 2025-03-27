@@ -1,141 +1,145 @@
 # Programming Quiz Application
 
-An AI-powered application for generating and evaluating programming quizzes across multiple languages, with webcam-based proctoring.
+A comprehensive assessment tool that supports multiple programming languages (Python, C++, C, Java), integrates with Google Gemini AI for generating programming exercises and evaluating user submissions, and provides webcam-based proctoring using YOLOv5 to detect cheating behaviors.
 
 ## Features
 
-- **Multi-language Support**: Generate quizzes for Python, C++, Java, and C
-- **AI-Powered Question Generation**: Uses Google Gemini to create unique programming challenges
-- **Automated Code Evaluation**: AI evaluation of submitted code with detailed feedback
-- **Webcam Proctoring**: YOLOv5-based monitoring for suspicious activities during quizzes
-- **Responsive Web Interface**: Clean UI for question selection, code editing, and result display
+### Core Functionality
+- **Multi-language Support**: Create quizzes for Python, C++, C, and Java
+- **AI-Generated Questions**: Uses Google Gemini to create programming challenges with varying difficulty levels
+- **Automatic Evaluation**: AI evaluates user submissions and provides feedback
+- **Code Testing**: Users can test their code before final submission
+- **In-page Execution**: Run and test code within the browser 
+- **Webcam Proctoring**: Detect cheating behaviors using computer vision
+- **Dynamic Timer**: Timing based on problem complexity determined by the LLM
+
+### Proctoring Capabilities
+- Detects suspicious objects (phones, secondary screens, books, etc.)
+- Alerts when the user is not visible or looking away
+- Takes screenshot evidence of suspicious activities
+- Logs all violations with timestamps
+
+### Quiz Management
+- **Difficulty Levels**: Easy, Medium, and Hard questions
+- **Language-specific Routes**: Share links for specific language assessments
+- **Session Tracking**: Track scores across quiz attempts
+- **Custom Time Limits**: Based on question difficulty
 
 ## Technical Architecture
 
-- **Backend**: Flask web server
-- **AI Integration**: Google Gemini API for question generation and code evaluation
-- **Computer Vision**: YOLOv5 for webcam monitoring
-- **Frontend**: HTML, Bootstrap CSS, JavaScript
+### Technologies Used
+- **Backend**: Flask (Python)
+- **AI Integration**: Google Gemini API
+- **Computer Vision**: YOLOv5 + OpenCV for face detection
+- **Frontend**: Bootstrap, Ace Editor for code editing
+- **Containerization**: Docker and Docker Compose for deployment
+- **Web Server**: Gunicorn for production-ready serving
 
-## Requirements
+### Key Components
+1. **Question Generation**: Using Gemini to create contextual problems
+2. **Code Evaluation**: AI-powered code review and feedback
+3. **Proctoring System**: Multi-stage person and object detection
+4. **Timer System**: Intelligent timing based on problem complexity
+5. **Docker Environment**: Containerized deployment with environment isolation and consistent dependencies
 
-- Python 3.8+
-- Google Gemini API key
-- Required Python packages (see `requirements.txt`)
+## How to Use
+
+### Creating a Quiz
+1. Access the application at the root URL
+2. Select a programming language (/quiz/python, /quiz/cpp, /quiz/c, or /quiz/java)
+3. Optionally specify difficulty level (/quiz/python/easy, /quiz/python/medium, /quiz/python/hard)
+
+### Taking a Quiz
+1. Select a programming challenge from the list
+2. Write your solution in the code editor
+3. Test your code using the "Test Code" button
+4. Submit your final solution when ready
+5. Complete the quiz before the timer expires
+
+### Proctoring Guidelines
+- Ensure your face is visible in the webcam
+- Don't use phones, books, or other resources unless permitted
+- Stay in frame during the entire assessment
+- Violations are logged and reported
+
+## Timer Feature
+- **Dynamic Timing**: The LLM assigns appropriate time limits based on question difficulty
+- **Visual Indicators**: Timer changes color as time runs low
+- **Auto-submission**: Solutions are submitted automatically when time expires
+- **Session Persistence**: Timer persists across page refreshes
 
 ## Setup Instructions
 
-### 1. Environment Setup
+### Prerequisites
+- Python 3.8+ (for local development)
+- Docker and Docker Compose (for containerized deployment)
+- Google Gemini API key
 
-Clone the repository and install dependencies:
+### Environment Variables
+- `GEMINI_API_KEY`: Your Google Gemini API key
+- `SESSION_SECRET`: Secret key for Flask session management
+- `OPENAI_API_KEY`: (Optional) For OpenAI integration if needed
 
-```bash
-git clone <repository-url>
-cd programming-quiz-app
-pip install -r requirements.txt
-```
+### Option 1: Running Locally
+1. Install required Python packages (see dependencies.md)
+2. Set the required environment variables in your environment or .env file
+3. Run `python main.py` or use `gunicorn` for production
+4. Access the application at `http://localhost:5000`
 
-### 2. API Key Configuration
+### Option 2: Running with Docker (Recommended)
 
-Set up your Google Gemini API key:
+#### Method A: Using the Deployment Script
+1. Clone the repository
+2. Run the deployment script:
+   ```
+   ./deploy.sh
+   ```
+3. The script will:
+   - Check for Docker and Docker Compose
+   - Create a .env file from .env.example if needed
+   - Build and start the Docker containers
+4. Access the application at `http://localhost:5000`
 
-```bash
-export GEMINI_API_KEY="your_api_key_here"
-```
-
-### 3. Running the Application
-
-Start the Flask application:
-
-```bash
-python main.py
-```
-
-Or use gunicorn for production deployment:
-
-```bash
-gunicorn --bind 0.0.0.0:5000 main:app
-```
-
-The application will start and be accessible at:
-- `http://localhost:5000` - Main index
-- `http://localhost:5000/quiz/python` - Python quiz
-- `http://localhost:5000/quiz/cpp` - C++ quiz
-- `http://localhost:5000/quiz/c` - C quiz
-- `http://localhost:5000/quiz/java` - Java quiz
-
-## Usage Guide
-
-### Accessing Language-Specific Quiz Pages
-
-1. **Starting the Application**:
-   - Run the application:
-     ```bash
-     python main.py
-     ```
-   - Or for production environments:
-     ```bash
-     gunicorn --bind 0.0.0.0:5000 main:app
-     ```
-
-2. **Accessing Language-Specific Quizzes**:
-   - Navigate to one of these URLs based on your preferred language:
-     - Python: `http://localhost:5000/quiz/python`
-     - C++: `http://localhost:5000/quiz/cpp` 
-     - C: `http://localhost:5000/quiz/c`
-     - Java: `http://localhost:5000/quiz/java`
-
-3. **Taking a Quiz**:
-   - Select a question from the list
-   - Write your solution in the code editor
-   - Submit your code for AI evaluation
-   - Review your scores and feedback
-
-### Example: Taking a C++ Quiz
-
-1. Start the application:
-   ```bash
-   python main.py
+#### Method B: Manual Docker Setup
+1. Clone the repository
+2. Copy `.env.example` to `.env` and fill in your API keys:
+   ```
+   cp .env.example .env
+   ```
+3. Build and start the Docker container:
+   ```
+   docker-compose up -d
+   ```
+4. Access the application at `http://localhost:5000`
+5. To stop the application:
+   ```
+   docker-compose down
    ```
 
-2. Navigate to the C++ quiz page:
-   ```
-   http://localhost:5000/quiz/cpp
-   ```
-   
-3. You'll see C++-specific programming questions generated by Google Gemini
+### Docker Environment Setup Details
+The application is containerized using Docker with the following features:
+- Automatic dependency installation
+- Persistent storage for webcam captures
+- Environment variable management
+- Hot-reloading for development
 
-4. Select a question and write your C++ solution in the editor
+#### Docker Commands
+- Build the image: `docker-compose build`
+- Start services: `docker-compose up -d`
+- View logs: `docker-compose logs -f`
+- Stop services: `docker-compose down`
+- Rebuild and restart: `docker-compose up -d --build`
 
-5. Submit your code for evaluation
+### Creating Custom Quizzes
+The application can generate quizzes with different parameters:
+- Change language by modifying URL path (/quiz/python, /quiz/java, etc.)
+- Specify difficulty level in URL (/quiz/python/easy)
+- Custom parameters can be added via query parameters
 
-6. The AI will analyze your solution based on C++ standards and requirements, providing detailed feedback
+## Contributing
 
-## Webcam Proctoring
-
-The application includes a webcam-based proctoring system that:
-
-- Periodically captures webcam images during quiz sessions
-- Uses YOLOv5 to detect suspicious behaviors (multiple people, phone usage, etc.)
-- Flags potential cheating attempts
-
-## Customization
-
-### Adding New Programming Languages
-
-Edit the application to support additional languages:
-
-1. Add a new route in `main.py` following the existing pattern (`/quiz/<language>`)
-2. Update the language mapping in the `generate_questions_for_technology` function
-3. Add appropriate starter code templates for the new language
-4. Ensure the AI evaluation prompt correctly specifies language-specific criteria
-
-## Troubleshooting
-
-- **API Key Issues**: Ensure your Gemini API key is correctly set in the environment variables
-- **Question Generation Errors**: Check logs for specific error details and adjust prompts if needed
-- **YOLOv5 Detection Issues**: Ensure proper lighting for accurate webcam detection
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-[Specify your license information here]
+This project is licensed under the MIT License - see the LICENSE file for details.

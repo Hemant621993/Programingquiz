@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  quiz-app:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./:/app
+      - /app/webcam_captures  # Persisted storage for webcam captures
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SESSION_SECRET=${SESSION_SECRET:-your_default_session_secret}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    restart: unless-stopped
